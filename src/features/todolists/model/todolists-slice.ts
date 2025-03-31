@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice, nanoid } from "@reduxjs/toolkit"
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit"
 // import {Dispatch} from "@reduxjs/toolkit"
 import { Todolist } from "@/features/todolists/api/todolistsApi.types.ts"
 import { todolistsApi } from "@/features/todolists/api/todolistsApi.ts"
@@ -21,12 +21,13 @@ export const todolistsSlice = createSlice({
     //   //   _state.push({ ...todolist, filter: "all" })
     //   // })
     // }),
-    deleteTodolistAC: create.reducer<{ id: string }>((state, action) => {
-      const index = state.findIndex((todolist) => todolist.id === action.payload.id)
-      if (index !== -1) {
-        state.splice(index, 1)
-      }
-    }),
+
+    // deleteTodolistAC: create.reducer<{ id: string }>((state, action) => {
+    //   const index = state.findIndex((todolist) => todolist.id === action.payload.id)
+    //   if (index !== -1) {
+    //     state.splice(index, 1)
+    //   }
+    // }),
     // пишем тут отдельно changeTodolistTitleAC либо уже через тот синтаксис санки с эксраредьюсерами
     // changeTodolistTitleAC: create.reducer<{ id: string; title: string }>((state, action) => {
     //   const index = state.findIndex((todolist) => todolist.id === action.payload.id)
@@ -51,20 +52,20 @@ export const todolistsSlice = createSlice({
     // createTodolistAC: create.reducer<string>((state, action) => {
     //   state.push({ id: nanoid(), title: action.payload, filter: "all" })
     // }),
-    createTodolistAC: create.preparedReducer(
-      (title: string) => ({
-        payload: { title, id: nanoid() },
-      }),
-      (state, action) => {
-        const newTodolist: DomainTodolist = {
-          ...action.payload,
-          filter: "all",
-          order: 1,
-          addedDate: "",
-        }
-        state.push(newTodolist)
-      },
-    ),
+    // createTodolistAC: create.preparedReducer(
+    //   (title: string) => ({
+    //     payload: { title, id: nanoid() },
+    //   }),
+    //   (state, action) => {
+    //     const newTodolist: DomainTodolist = {
+    //       ...action.payload,
+    //       filter: "all",
+    //       order: 1,
+    //       addedDate: "",
+    //     }
+    //     state.push(newTodolist)
+    //   },
+    // ),
   }),
   extraReducers: (builder) => {
     builder
@@ -81,6 +82,15 @@ export const todolistsSlice = createSlice({
           state[index].title = action.payload.title
         }
       })
+      .addCase(deleteTodolistTC.fulfilled, (state, action) => {
+        const index = state.findIndex((todolist) => todolist.id === action.payload.id)
+        if (index !== -1) {
+          state.splice(index, 1)
+        }
+      })
+      .addCase(createTodolistTC.fulfilled, (state, action) => {
+        state.unshift({ ...action.payload.todolist, filter: "all" })
+      })
   },
   selectors: {
     selectTodolists: (state) => state,
@@ -88,7 +98,7 @@ export const todolistsSlice = createSlice({
 })
 
 export const todolistsReducer = todolistsSlice.reducer
-export const { deleteTodolistAC, createTodolistAC, changeTodolistFilterAC } = todolistsSlice.actions
+export const { changeTodolistFilterAC } = todolistsSlice.actions
 export const { selectTodolists } = todolistsSlice.selectors
 
 // Thunk - первый способ написания (ф-ция возвращающая другую ф-цию), более старый (написано двумя способами).
@@ -138,6 +148,30 @@ export const changeTodolistTitleTC = createAsyncThunk(
     try {
       await todolistsApi.changeTodolistTitle(args)
       return args
+    } catch (error) {
+      return rejectWithValue(null)
+    }
+  },
+)
+
+export const deleteTodolistTC = createAsyncThunk(
+  `${todolistsSlice.name}/deleteTodolistTC`,
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await todolistsApi.deleteTodolist(id)
+      return { id }
+    } catch (error) {
+      return rejectWithValue(null)
+    }
+  },
+)
+
+export const createTodolistTC = createAsyncThunk(
+  `${todolistsSlice.name}/createTodolistAC`,
+  async (title: string, { rejectWithValue }) => {
+    try {
+      const res = await todolistsApi.createTodolist(title)
+      return { todolist: res.data.data.item }
     } catch (error) {
       return rejectWithValue(null)
     }
